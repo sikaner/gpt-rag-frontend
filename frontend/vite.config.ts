@@ -16,6 +16,8 @@ export default defineConfig({
             '/api/get-storage-account': "http://localhost:8000",            
             '/api/get-blob': "http://localhost:8000"
         },
-        host: true
+        host: '0.0.0.0',  
+    port: 5173,       
+    strictPort: true
     }
 });
