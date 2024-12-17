@@ -2,79 +2,61 @@ pipeline {
     agent any
 
     environment {
-        // Define your EC2 instance's public IP and credentials ID
-        EC2_IP = "54.167.160.183"
-        SSH_CREDENTIALS_ID = "54.167.160.183"  // Name of your Jenkins SSH credentials
+        EC2_USER = 'ubuntu'                        // Replace 'ubuntu' with the EC2 username
+        EC2_IP = '54.167.160.183'              // Replace with your EC2 Public IP
+        SSH_KEY = credentials('MyCredentials')     // Jenkins credential ID
+        REPO_URL = 'https://github.com/sikaner/gpt-rag-frontend.git'
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Block 1: Setup Frontend and Backend') {
             steps {
-                git 'https://github.com/sikaner/gpt-rag-frontend.git'
-            }
-        }
+                echo "Deploying frontend and backend..."
+                sshagent(['MyCredentials']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${EC2_USER}@${} 'bash -s' << "ENDSSH"
+                    echo "Cloning repository..."
+                    rm -rf ~/gpt-rag-frontend
+                    git clone ${REPO_URL} ~/gpt-rag-frontend
 
-        stage('Install Backend Dependencies') {
-            steps {
-                script {
-                    sshagent([54.167.160.183]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_54.167.160.183} \
-                        'cd ${BACKEND_DIR} && pip3 install -r requirements.txt'
-                        """
-                    }
+                    echo "Setting up Frontend..."
+                    cd ~/gpt-rag-frontend/frontend
+                    npm install
+                    npm run build
+
+                    echo "Setting up Backend..."
+                    cd ~/gpt-rag-frontend/backend
+                    python3 -m venv .env
+                    source .env/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt || echo "No requirements.txt found"
+                    deactivate
+
+                    echo "Frontend and Backend setup complete."
+                    ENDSSH
+                    """
                 }
             }
         }
 
-        stage('Install Frontend Dependencies') {
+        stage('Block 2: Frontend Only') {
             steps {
-                script {
-                    sshagent([54.167.160.183]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_54.167.160.183} \
-                        'cd ${FRONTEND_DIR} && npm install'
-                        """
-                    }
-                }
-            }
-        }
+                echo "Deploying frontend only..."
+                sshagent(['MyCredentials']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'bash -s' << "ENDSSH"
+                    echo "Cloning repository for frontend only..."
+                    rm -rf ~/gpt-rag-frontend
+                    git clone ${REPO_URL} ~/gpt-rag-frontend
 
-        stage('Build Frontend') {
-            steps {
-                script {
-                    sshagent([54.167.160.183]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_54.167.160.183} \
-                        'cd ${FRONTEND_DIR} && npm run build'
-                        """
-                    }
-                }
-            }
-        }
+                    echo "Setting up Frontend..."
+                    cd ~/gpt-rag-frontend/frontend
+                    npm install
+                    npm run build
 
-        stage('Start Backend') {
-            steps {
-                script {
-                    sshagent([SSH_CREDENTIALS_ID]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_54.167.160.183} \
-                        'cd ${BACKEND_DIR} && python3 app.py &'
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Start Frontend') {
-            steps {
-                script {
-                    sshagent([SSH_CREDENTIALS_ID]) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_54.167.160.183} \
-                        'cd ${FRONTEND_DIR}/build && python3 -m http.server 80 &'
-                        """
-                    }
+                    echo "Frontend setup complete."
+                    ENDSSH
+                    """
                 }
             }
         }
@@ -82,10 +64,10 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment Successful!'
+            echo "Deployment to EC2 completed successfully!"
         }
         failure {
-            echo 'Deployment Failed!'
+            echo "Deployment failed! Check Jenkins logs for errors."
         }
     }
 }
