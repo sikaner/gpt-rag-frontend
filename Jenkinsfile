@@ -8,8 +8,8 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                echo "Cloning repository..."
-                deleteDir() // Clean workspace before cloning
+                echo "Cleaning workspace and cloning repository..."
+                deleteDir()
                 git branch: "${env.BRANCH_NAME}", url: "${REPO_URL}"
             }
         }
@@ -29,6 +29,8 @@ pipeline {
                 dir('frontend') {
                     sh 'npm run build'
                 }
+                echo "Checking if build directory exists..."
+                sh 'ls -la frontend/build || echo "Build directory not found!"'
             }
         }
 
