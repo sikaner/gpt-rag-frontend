@@ -14,7 +14,7 @@ pipeline {
                 echo "Deploying frontend and backend..."
                 sshagent(['MyCredentials']) {
                     sh """
-                    ssh -o StrictHostKeyChecking=no ${EC2_USER}@${} 'bash -s' << "ENDSSH"
+                    ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'bash -s' << "ENDSSH"
                     echo "Cloning repository..."
                     rm -rf ~/gpt-rag-frontend
                     git clone ${REPO_URL} ~/gpt-rag-frontend
