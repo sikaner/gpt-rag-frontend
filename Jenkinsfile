@@ -1,22 +1,24 @@
 pipeline {
     agent any
 
-    environment {
-        REPO_URL = 'https://github.com/sikaner/gpt-rag-frontend.git'
-    }
-
     stages {
+        stage('Clean Workspace') {
+            steps {
+                echo "Cleaning workspace..."
+                deleteDir()
+            }
+        }
+
         stage('Clone Repository') {
             steps {
-                echo "Cleaning workspace and cloning repository..."
-                deleteDir()
-                git branch: "${env.BRANCH_NAME}", url: "${REPO_URL}"
+                echo "Cloning repository..."
+                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/sikaner/gpt-rag-frontend.git'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                echo "Installing frontend dependencies..."
+                echo "Installing dependencies..."
                 dir('frontend') {
                     sh 'npm install'
                 }
@@ -29,25 +31,25 @@ pipeline {
                 dir('frontend') {
                     sh 'npm run build'
                 }
-                echo "Checking if build directory exists..."
+                echo "Verifying build directory..."
                 sh 'ls -la frontend/build || echo "Build directory not found!"'
             }
         }
 
         stage('Archive Build Artifacts') {
             steps {
-                echo "Archiving build artifacts..."
-                archiveArtifacts artifacts: 'frontend/build/**', fingerprint: true
+                echo "Archiving artifacts..."
+                archiveArtifacts artifacts: '**/build/**', fingerprint: true
             }
         }
     }
 
     post {
         success {
-            echo "Build completed successfully!"
+            echo "Pipeline executed successfully!"
         }
         failure {
-            echo "Build failed! Check the logs."
+            echo "Pipeline failed. Check the logs for details."
         }
     }
 }
